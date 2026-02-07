@@ -1,0 +1,40 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Local files
+*.log
+*.db
+*.sqlite
+uploads/*
+!uploads/.gitkeep
+
+# Dev files
+prompts.md
+
+# Exclude STEP files in uploads but keep sample
+uploads/*
+!uploads/.gitkeep
+!tests/sample.STEP
+
+# OS
+.DS_Store
+Thumbs.db
+.pytest_cache/

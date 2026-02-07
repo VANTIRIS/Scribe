@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SCRIBE - CAD Viewer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style_expansion.css') }}" />
+    <style>
+        .scribe-brand {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            font-size: 1.25rem;
+            color: #60a5fa;
+            text-shadow: 0 0 12px rgba(96, 165, 250, 0.3);
+        }
+
+        .scribe-subtitle {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-weight: 400;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-left: 10px;
+            font-style: italic;
+        }
+
+        .view-btn {
+            background: #374151;
+            border: 1px solid #4b5563;
+            color: #d1d5db;
+            padding: 6px 4px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .view-btn:hover {
+            background: #4b5563;
+            border-color: #60a5fa;
+            color: #fff;
+        }
+
+        .view-btn:active {
+            background: #60a5fa;
+            color: #111827;
+        }
+
+        .thread-group {
+            background: #f1f5f9;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .thread-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            cursor: pointer;
+            background: #f1f5f9;
+            transition: background 0.15s;
+        }
+
+        .thread-group-header:hover {
+            background: #e2e8f0;
+        }
+
+        .thread-group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .thread-group-count {
+            font-size: 10px;
+            color: #64748b;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .thread-group-content {
+            padding: 0 10px 8px 10px;
+            display: none;
+        }
+
+        .thread-group.expanded .thread-group-content {
+            display: block;
+        }
+
+        .thread-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 11px;
+            color: #d1d5db;
+        }
+
+        /* Floating View Buttons in Viewport */
+        #view-buttons {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            z-index: 100;
+            opacity: 0.4;
+            transition: opacity 0.2s ease;
+        }
+
+        #view-buttons:hover {
+            opacity: 0.9;
+        }
+
+        #view-buttons .view-btn {
+            width: 28px;
+            height: 24px;
+            padding: 0;
+            font-size: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Toolbar -->
+    <header id="toolbar">
+        <div class="tb-left">
+            <span class="scribe-brand">SCRIBE</span>
+            <span class="scribe-subtitle">like PDFs for CAD</span>
+        </div>
+        <div class="tb-center">
+            <!-- Toggle icon buttons like Fusion 360 -->
+            <button class="tb-icon active" id="tb-light" title="Cycle Lighting">
+                <svg width="16" height="16" viewBox="0 0 16 16">
+                    <circle cx="8" cy="8" r="4" stroke="currentColor" stroke-width="1.5" fill="none" />
+                    <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" />
+                    <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                    <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.5"
+                        stroke-linecap="round" />
+                </svg>
+                <span>Light</span>
+            </button>
+            <button class="tb-icon active" id="tb-edges" title="Toggle Edges">
+                <svg width="16" height="16" viewBox="0 0 16 16">
+                    <rect x="2" y="4" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.5"
+                        fill="none" />
+                    <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="1" opacity=".5" />
+                </svg>
+                <span>Edges</span>
+            </button>
+            <div class="tb-sep"></div>
+            <button class="tb-icon" id="tb-fit" title="Fit to View">
+                <svg width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M1 5V1h4M11 1h4v4M15 11v4h-4M5 15H1v-4" stroke="currentColor" stroke-width="1.5"
+                        fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>Fit</span>
+            </button>
+
+
+        </div>
+        <div class="tb-right">
+            <span id="model-uuid" class="tb-uuid"></span>
+        </div>
+    </header>
+
+    <!-- Left Sidebar -->
+    <aside id="sidebar">
+        <div class="panel-header">
+            <span class="panel-title">Tools</span>
+            <button id="sidebar-pin" class="panel-pin" title="Collapse panel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+            </button>
+        </div>
+        <div class="section">
+            <h2>Import</h2>
+            <div id="drop-zone" class="drop-zone">
+                <div class="drop-zone-content">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span id="upload-label">Drag & drop STEP file<br />or click to browse</span>
+                </div>
+                <input type="file" id="file-input" accept=".step,.stp" />
+            </div>
+        </div>
+
+        <div id="loading" class="hidden">
+            <div class="spinner"></div>
+            <span>Processing...</span>
+        </div>
+
+        <div id="export-section" class="section hidden">
+            <h2>Export</h2>
+            <button id="export-btn">Export STEP</button>
+        </div>
+
+
+
+        <!-- Console log fills bottom of sidebar -->
+        <div id="console-section">
+            <h2>Console</h2>
+            <div id="console-log"></div>
+        </div>
+    </aside>
+
+    <!-- 3-D canvas -->
+    <main id="viewer-container">
+        <div id="gizmo-container"></div>
+
+        <!-- Quick View Buttons (floating in viewport) -->
+        <div id="view-buttons">
+            <button class="view-btn" data-view="front" title="Front">F</button>
+            <button class="view-btn" data-view="back" title="Back">B</button>
+            <button class="view-btn" data-view="left" title="Left">L</button>
+            <button class="view-btn" data-view="right" title="Right">R</button>
+            <button class="view-btn" data-view="top" title="Top">T</button>
+            <button class="view-btn" data-view="bottom" title="Bottom">Bo</button>
+            <button class="view-btn" data-view="iso" title="Isometric">Iso</button>
+        </div>
+
+
+        <!-- Lighting Modal (existing) -->
+        <div id="lighting-modal" class="hidden">
+            <div class="modal-header">
+                <h3>Lighting Settings</h3>
+                <button id="close-lighting">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="control-group">
+                    <label>Preset</label>
+                    <select id="light-preset">
+                        <option value="0">Standard (3-Point)</option>
+                        <option value="1">Flat (Even)</option>
+                        <option value="2">Dramatic (High Contrast)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Ambient Intensity</label>
+                    <input type="range" id="light-ambient" min="0" max="2" step="0.05" value="0.4">
+                </div>
+
+                <div class="control-group">
+                    <label>Key Light (Main)</label>
+                    <input type="range" id="light-key" min="0" max="3" step="0.1" value="1.0">
+                </div>
+
+                <div class="control-group">
+                    <label>Fill Light (Soft)</label>
+                    <input type="range" id="light-fill" min="0" max="2" step="0.05" value="0.5">
+                </div>
+
+                <div class="control-group">
+                    <label>Back Light (Rim)</label>
+                    <input type="range" id="light-back" min="0" max="2" step="0.05" value="0.5">
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel Container -->
+        <div id="right-panel-container">
+            <!-- Vertical Tabs -->
+            <div id="rp-tabs">
+                <button class="rp-tab active" data-view="props" title="Face Properties">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                    <span>Props</span>
+                </button>
+                <button class="rp-tab" data-view="holes" title="Hole Wizard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Holes</span>
+                </button>
+                <button class="rp-tab" data-view="heatmap" title="Tolerances">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z">
+                        </path>
+                        <line x1="12" y1="22" x2="12" y2="22"></line>
+                    </svg>
+                    <span>Tol.</span>
+                </button>
+            </div>
+
+            <!-- Right Panel Content -->
+            <aside id="right-panel" class="hidden">
+                <div class="rp-header">
+                    <span id="rp-title">PROPERTIES</span>
+                    <button id="rp-close" class="icon-btn" title="Close Panel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Scrollable Content Wrapper -->
+                <div id="rp-content" style="flex: 1; overflow-y: auto;">
+
+                    <!-- Default View: Face Properties -->
+                    <div id="rp-default-view">
+                        <div class="rp-section">
+                            <div class="rp-row">
+                                <span class="rp-label">Face ID</span>
+                                <span class="rp-value" id="rp-face-id">--</span>
+                            </div>
+                            <div class="rp-row">
+                                <span class="rp-label">Type</span>
+                                <span class="rp-value" id="rp-face-type">Planar</span>
+                            </div>
+                            <div class="rp-row">
+                                <span class="rp-label">Area</span>
+                                <span class="rp-value" id="rp-face-area">--</span>
+                            </div>
+                        </div>
+
+                        <div class="rp-section">
+                            <h3>Appearance</h3>
+                            <label for="color-picker" class="rp-label">Surface Color</label>
+                            <input type="color" id="color-picker" value="#90a4ae" />
+                            <button id="reset-color-btn">Reset to Default</button>
+                        </div>
+
+                        <div class="rp-section">
+                            <h3>Threading</h3>
+                            <label class="rp-label">Thread Type</label>
+                            <div class="combobox" id="cb-thread-type">
+                                <input type="text" placeholder="None" autocomplete="off" />
+                                <div class="combobox-list"></div>
+                            </div>
+                            <label class="rp-label">Thread Size</label>
+                            <div class="combobox" id="cb-thread-size">
+                                <input type="text" placeholder="--" autocomplete="off" />
+                                <div class="combobox-list"></div>
+                            </div>
+                            <label class="rp-label">Thread Class</label>
+                            <div class="combobox" id="cb-thread-class">
+                                <input type="text" placeholder="None" autocomplete="off" />
+                                <div class="combobox-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="rp-section">
+                            <h3>Tolerancing</h3>
+                            <label class="rp-label">Tolerance Type</label>
+                            <div class="combobox" id="cb-tol-type">
+                                <input type="text" placeholder="None" autocomplete="off" />
+                                <div class="combobox-list"></div>
+                            </div>
+                            <label class="rp-label">Value / Class</label>
+                            <div class="combobox" id="cb-tol-value">
+                                <input type="text" placeholder="--" autocomplete="off" />
+                                <div class="combobox-list"></div>
+                            </div>
+                            <label class="rp-label">Datum Ref</label>
+                            <input type="text" id="inp-datum" class="rp-input" placeholder="e.g. A|B|C" />
+                        </div>
+
+                        <div class="rp-section">
+                            <h3>Surface Finish</h3>
+                            <div class="rp-row"><span class="rp-label">Roughness (Ra)</span><span
+                                    class="rp-value rp-placeholder" id="rp-roughness">--</span></div>
+                            <div class="rp-row"><span class="rp-label">Finish Process</span><span
+                                    class="rp-value rp-placeholder" id="rp-finish">--</span></div>
+                        </div>
+
+                        <div class="rp-section">
+                            <h3>Material</h3>
+                            <div class="rp-row"><span class="rp-label">Material</span><span
+                                    class="rp-value rp-placeholder" id="rp-material">--</span></div>
+                            <div class="rp-row"><span class="rp-label">Hardness</span><span
+                                    class="rp-value rp-placeholder" id="rp-hardness">--</span></div>
+                        </div>
+                    </div> <!-- End rp-default-view -->
+
+                    <hr class="rp-divider">
+
+                    <!-- Expanded Content: Heat Map Settings -->
+                    <div id="heatmap-section" class="hidden">
+                        <h3>TOLERANCES</h3>
+
+                        <!-- Tolerance Type Filters -->
+                        <div class="rp-section">
+                            <h4 style="margin:0 0 6px 0; font-size:11px; color:#9ca3af;">Show Types</h4>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:11px;">
+                                <label style="display:flex; align-items:center; gap:4px; color:#d1d5db;"><input
+                                        type="checkbox" id="hm-show-linear" checked style="width:12px; height:12px;">
+                                    Linear
+                                    ±</label>
+                                <label style="display:flex; align-items:center; gap:4px; color:#d1d5db;"><input
+                                        type="checkbox" id="hm-show-limit" checked style="width:12px; height:12px;">
+                                    Limit</label>
+                                <label style="display:flex; align-items:center; gap:4px; color:#d1d5db;"><input
+                                        type="checkbox" id="hm-show-gdt" checked style="width:12px; height:12px;">
+                                    GD&T</label>
+                                <label style="display:flex; align-items:center; gap:4px; color:#d1d5db;"><input
+                                        type="checkbox" id="hm-show-fits" checked style="width:12px; height:12px;">
+                                    Fits</label>
+                            </div>
+                        </div>
+
+                        <!-- Heat Map Groups (Color Coded) -->
+                        <div id="heatmap-groups" class="rp-section"
+                            style="border-top:1px solid #374151; padding-top:10px;"></div>
+
+                        <!-- Legend -->
+                        <div class="hm-legend">
+                            <h4>Legend</h4>
+                            <div class="hm-item"><span class="hm-dot" id="hm-dot-tight"
+                                    style="background:#ef4444"></span>
+                                Tight (≤ min)</div>
+                            <div class="hm-item"><span class="hm-dot" id="hm-dot-loose"
+                                    style="background:#94a3b8"></span>
+                                Loose (≥ max)</div>
+                            <div class="hm-item"><span class="hm-dot" style="background:#374151"></span> No tolerance
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expanded Content: Hole Manager -->
+                    <div id="hole-manager-section" class="hidden">
+                        <h3>HOLE WIZARD</h3>
+
+                        <!-- Thread Groups -->
+                        <div class="rp-section">
+                            <h4 style="margin:0 0 6px 0; font-size:11px; color:#9ca3af;">Thread Types</h4>
+                            <div id="thread-groups">
+                                <!-- Populated by JS - thread types with expandable groups and color pickers -->
+                                <div class="thread-group-placeholder"
+                                    style="color:#6b7280; font-size:11px; font-style:italic;">
+                                    Load a model to see threads...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hole List by Diameter -->
+                        <div class="rp-section">
+                            <h4 style="margin:0 0 6px 0; font-size:11px; color:#9ca3af;">Holes by Diameter</h4>
+                            <div id="hole-list">
+                                <div class="hole-list-placeholder"
+                                    style="color:#6b7280; font-size:11px; font-style:italic;">
+                                    Load a model to see holes...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> <!-- End rp-content -->
+            </aside>
+        </div> <!-- End right-panel-container -->
+
+        <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+        <script>
+            window.ENABLE_BOOT_TEST = {{ boot_test | tojson }};
+        </script>
+        <script type="module" src="{{ url_for('static', filename='js/viewer.js') }}"></script>
+</body>
+
+</html>
