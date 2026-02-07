@@ -10,107 +10,150 @@
 
 ```text
 /
-├── app.py                  # MAIN BACKEND ENTRYPOINT
-│   ├── [Routes]            # /upload, /save_metadata, /test_sample
-│   ├── [Logic]             # load_step_xcaf(), export_step_xcaf()
-│   └── [DB]                # SQLite connection & schema (face_metadata table)
-├── requirements.txt        # Python dependencies (Flash, CadQuery, OCP, etc.)
+├── app.py                  # Flask routes (entry point)
+├── core/                   # Core application logic (modular)
+│   ├── state.py            # ModelState singleton & global state
+│   ├── loader.py           # STEP loading, tessellation, metadata recovery
+│   ├── exporter.py         # STEP export with metadata injection
+│   ├── metadata.py         # 3-strategy metadata embed/extract
+│   └── utils.py            # Color conversion & utilities
+├── face_db.py              # SQLite face fingerprinting & metadata
+├── requirements.txt        # Python dependencies (cadquery-ocp, flask, gunicorn)
+├── Dockerfile              # GCP deployment container (python:3.11-slim)
+├── .dockerignore            # Exclude venv, dev files
 ├── static/
 │   ├── js/
-│   │   ├── viewer.js       # MAIN FRONTEND LOGIC
-│   │   │   ├── [Init]      # Scene setup, Event listeners
-│   │   │   ├── [Core]      # loadModel(), buildScene(), fitCamera()
-│   │   │   ├── [Tools]     # Raycasting, Heat Map, Hole Wizard
-│   │   │   └── [UI]        # Panel toggles, DOM updates
-│   │   └── three.min.js    # Three.js library
+│   │   └── viewer.js       # Three.js viewer + all UI logic
 │   └── css/
-│       └── style.css       # UI Styling (Dark mode, absolute positioning)
+│       ├── style.css        # Core light theme & layout
+│       └── style_expansion.css  # Panel expansion styles
 ├── templates/
-│   └── index.html          # Single Page Application (SPA) container
+│   └── index.html          # Single-page application
 ├── tests/
-│   └── sample.STEP         # Default loaded model
-└── metadata.db             # Local SQLite DB (generated at runtime)
+│   ├── run_tests.py        # Main test runner script
+│   ├── sample.step         # Default loaded model
+│   └── test_*.py           # Unit & integration tests
+├── uploads/                # User-uploaded files (persistent)
+└── stepviewer.db           # SQLite DB (generated at runtime)
 ```
 
 ---
 
 ## 🧠 Core Logic & Systems
 
-### 1. Backend (`app.py`)
-**Framework**: Flask + Gunicorn
-**Geometry Kernel**: Open Cascade (OCCT) via `cadquery` & `OCP`.
+### 1. Backend (Modular Architecture)
+
+**Framework**: Flask + Gunicorn  
+**Geometry Kernel**: Open Cascade (OCCT) via `cadquery` & `OCP`
+
+| Module | Purpose |
+|--------|---------|
+| `app.py` | Flask routes, API endpoints |
+| `core/loader.py` | `load_step_xcaf()` — STEP reading, face tessellation, metadata recovery |
+| `core/exporter.py` | `export_step_xcaf()` — STEP writing with metadata injection |
+| `core/metadata.py` | 3-strategy metadata embed/extract (entity, description, comment) |
+| `core/state.py` | `ModelState` singleton holding the XDE document and face data |
+| `core/utils.py` | Color conversion helpers |
+| `face_db.py` | SQLite face fingerprinting, exact + fuzzy matching |
 
 #### Key Functions
-*   **`load_step_xcaf(path)`**: 
-    *   Reads STEP using `STEPCAFControl_Reader`.
+*   **`load_step_xcaf(path)`** (`core/loader.py`): 
+    *   Reads STEP using `STEPCAFControl_Reader` with XDE document.
+    *   Extracts embedded metadata via `extract_meta_from_step()` **before** OCC reads the file.
     *   Iterates topological faces (`TopExp_Explorer`).
-    *   **Hashing**: Generates a stable geometry hash for each face (Center of Mass + Area + Normal) to link metadata even if file is re-exported.
-    *   **Metadata Recovery**: Checks `metadata.db` AND internal `XCAF` labels for colors/names.
-    *   **Tessellation**: Converts BRep to Mesh (`BRepMesh_IncrementalMesh`) for Three.js.
-*   **`export_step_with_color(faces, path)`**:
-    *   Reconstructs a generic compound from modified faces.
-    *   **Injection**: Uses `XCAFDoc_ColorTool` to embed user-assigned colors directly into the STEP file structure.
-    *   **Attributes**: Writes metadata (Thread, Tolerance) as `TDataStd_Name` or `User Data` labels in the XCAF tree.
+    *   **Hashing**: Generates a stable geometry hash for each face.
+    *   **Metadata Recovery Priority**: Embedded STEP (hash-based) > Embedded STEP (index-based) > SQLite DB (exact+fuzzy).
+    *   **Tessellation**: Converts BRep to Mesh for Three.js.
+*   **`export_step_xcaf()`** (`core/exporter.py`):
+    *   Writes XDE document with colors via `STEPCAFControl_Writer`.
+    *   Injects metadata via 3 strategies (see Metadata System below).
+*   **`inject_meta_into_step()` / `extract_meta_from_step()`** (`core/metadata.py`):
+    *   **Strategy 1**: `PROPERTY_DEFINITION` → `DESCRIPTIVE_REPRESENTATION_ITEM` (SolidWorks-compatible)
+    *   **Strategy 2**: `[SVFM:<base64>]` in PRODUCT description field (universally preserved)
+    *   **Strategy 3**: `/* __STEPVIEWER_META_START__ ... */` comment block (fast SCRIBE-to-SCRIBE)
 
 ### 2. Frontend (`viewer.js` + `index.html`)
 **Framework**: Vanilla JS + Three.js (WebGL)
 
 #### Rendering Pipeline
-1.  **`loadModel()`**: Fetches JSON payload from `/upload` (Vertices, Normals, Indices, Metadata).
-2.  **`buildScene()`**: 
-    *   Creates `THREE.BufferGeometry` for each face.
-    *   Assigns `userData` (FaceID, Thread info, Tolerance) to each mesh.
-    *   Adds edges (`THREE.LineSegments`) for visual clarity.
-3.  **`fitCameraToGroup()`**: Calculates bounding box and positions camera at **Isometric (-1, -1, 1)** default.
+1.  **`loadModel()`**: Fetches JSON from `/upload` (Vertices, Normals, Indices, Metadata).
+2.  **`buildScene()`**: Creates `THREE.BufferGeometry` per face with `userData`.
+3.  **`fitCameraToGroup()`**: Positions camera at **Isometric (-1, -1, 1)** default.
 
-#### Interaction Logic
-*   **Arcball Controls**: Custom implementation using `ArcballControls.js` (or similar logic) for "tumbling" rotation.
-*   **Raycasting (`onPointerUp`)**:
-    *   Casts ray from mouse coords.
-    *   **Selection**: Highlights face (Emissive material), populates "Right Panel".
-*   **View Switching**:
-    *   **Floating Buttons**: Camera moves to fixed vector (e.g., `(0, 1, 0)` for Top) & `lookAt(center)`.
+#### Interaction
+*   **Arcball Controls**: `ArcballControls.js` for tumbling rotation.
+*   **Raycasting**: Click → highlight face (pink glow), populate right panel.
+*   **View Buttons**: Floating bar (F/B/L/R/T/Bo/Iso) for quick camera presets.
 
 ### 3. Feature: Tolerance Heat Map
-**Logic Location**: `applyHeatMap()` in `viewer.js`
-*   **Input**: `faces` array with `tolerance` metadata.
-*   **Colors**:
-    *   **Tight** (<= 0.005"): Lerps to **Red** (configurable).
-    *   **Loose** (> 0.005"): Lerps to **Gray** (configurable).
-    *   **None**: Sets material to `transparent/ghosted`.
-*   **Filtering**: Checks checkboxes (Linear, GD&T, etc.) and hides meshes that don't match.
+*   **Tight** (≤ 0.005"): **Red** (configurable)
+*   **Loose** (> 0.005"): **Gray** (configurable)
+*   **None**: Ghosted/transparent
+*   Filtering by tolerance type via checkboxes.
 
 ### 4. Feature: Hole Wizard
-**Logic Location**: `loadHoleManager()` in `viewer.js`
-*   **Grouping**: Iterates all faces.
-    *   Checks `userData.thread` (e.g., "UNC 1/4-20").
-    *   Groups matching faces into a "Thread Group".
-*   **Interaction**: Default view hides *everything* except the hole faces.
-*   **Coloring**: User can assign a hex color to a "Thread Group". This overrides the face's material color in the `Three.js` scene.
+*   Groups faces by thread metadata (e.g. "UNC 1/4-20").
+*   Color picker per group, visibility toggle, delete action.
+*   Counts unthreaded cylindrical faces.
+
+### 5. Admin Cleanup Tools
+*   **3-scope metadata cleanup**: DB only, File only, or All (nuke).
+*   Strips all 3 metadata strategies from the STEP file.
+*   Clears in-memory `model.face_meta` to prevent re-injection on export.
+*   Before/after verification via `extract_meta_from_step()`.
 
 ---
 
-## 💾 Data Schema (`metadata.db`)
+## 💾 Database Schema (`stepviewer.db`)
 
-**Table**: `face_metadata`
+**Table**: `face_meta`
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | `id` | INTEGER | Primary Key |
-| `file_hash` | TEXT | Hash of the parent STEP file content |
-| `face_id` | INTEGER | Index of the face in the STEP topology |
-| `geom_hash` | TEXT | **Critical**: Geometric fingerprint (centroid+area) for robust matching |
-| `color` | TEXT | Hex code (`#ff0000`) |
-| `thread` | JSON | `{type: "UNC", size: "1/4-20", ...}` |
-| `tolerance` | JSON | `{type: "linear", value: 0.005, ...}` |
+| `face_hash` | TEXT UNIQUE | 16-char hex geometry fingerprint |
+| `meta` | TEXT | JSON: `{color, thread, tolerance, ...}` |
+| `surf_type` | TEXT | Surface type (Plane, Cylinder, etc.) |
+| `cx, cy, cz` | REAL | Centroid coordinates |
+| `area` | REAL | Surface area |
+| `dx, dy, dz` | REAL | Bounding box dimensions |
+| `n_edges` | INTEGER | Edge count |
+| `n_verts` | INTEGER | Vertex count |
+| `created_at` | TIMESTAMP | Creation timestamp |
+| `updated_at` | TIMESTAMP | Last update timestamp |
 
 ---
 
 ## 🔄 API Endpoints
 
-| Method | Endpoint | Payload | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/upload` | `multipart/form-data` | Uploads STEP, processes to JSON mesh + meta. |
-| `GET` | `/test_sample`| `None` | Auto-loads `tests/sample.STEP`. |
-| `POST` | `/save_metadata` | JSON `{face_id, data...}` | Updates DB and in-memory cache for a face. |
-| `POST` | `/set_tolerance` | JSON `{updates: []}` | Batch updates tolerances (Heat Map). |
-| `GET` | `/export_step/UUID` | `None` | Triggers generic compound rebuild + XCAF color injection -> Download. |
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/` | Serve main app (auto-loads `tests/sample.step`) |
+| `GET` | `/<uuid>` | Load model by UUID |
+| `POST` | `/upload` | Upload STEP file, returns face mesh data + UUID |
+| `GET` | `/model/<uuid>` | Get face data for a persisted model |
+| `POST` | `/set_color` | Set face color(s) |
+| `POST` | `/set_thread` | Set threading metadata |
+| `POST` | `/set_tolerance` | Set tolerance metadata (batch) |
+| `GET` | `/thread_options` | Get thread dropdown options |
+| `GET` | `/tolerance_options` | Get tolerance dropdown options |
+| `GET` | `/holes` | Get hole analysis data |
+| `POST` | `/export` | Export annotated STEP (UUID filename) |
+| `POST` | `/test_cube` | Generate test cube (internal) |
+| `GET` | `/test_sample` | Load `tests/sample.step` (internal) |
+| `POST` | `/api/admin/clear_metadata` | Admin: Wipe DB + strip file + clear memory |
+| `GET` | `/db_stats` | Database statistics |
+
+## 🧪 Running Tests
+
+Tests are located in `tests/` and require the Flask server running on port 5555.
+
+```bash
+# Start the server
+venv\Scripts\python.exe app.py
+
+# Run the full suite (in another terminal)
+venv\Scripts\python.exe tests/run_tests.py
+
+# Or use pytest directly
+venv\Scripts\python.exe -m pytest tests/ -v
+```

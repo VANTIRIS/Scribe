@@ -216,17 +216,17 @@ const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
 /* Key light - main light from front-right-above (warm) */
-const keyLight = new THREE.DirectionalLight(0xfffaec, 1.1);
+const keyLight = new THREE.DirectionalLight(0xfffaec, 1.8);
 keyLight.position.set(100, 150, 100);
 scene.add(keyLight);
 
 /* Fill light - softer light from front-left (cool) */
-const fillLight = new THREE.DirectionalLight(0xeef4ff, 0.6);
+const fillLight = new THREE.DirectionalLight(0xeef4ff, 1.0);
 fillLight.position.set(-80, 50, 80);
 scene.add(fillLight);
 
 /* Back/rim light - from behind for definition */
-const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+const backLight = new THREE.DirectionalLight(0xffffff, 1.0);
 backLight.position.set(0, 50, -150);
 scene.add(backLight);
 
@@ -287,8 +287,10 @@ function applyHeatMap() {
     if (!isHeatMapActive) return;
 
     faceMeshes.forEach(mesh => {
-        /* Reset to default first (or handle existing colors? Hole mode takes precedence?) */
-        /* For now, Heat Map overrides everything if active */
+        /* Save original color before heat map overwrites it */
+        if (!mesh.userData.savedColor) {
+            mesh.userData.savedColor = mesh.material.color.clone();
+        }
 
         const tol = mesh.userData.tolerance;
         if (tol && tol.type && tol.type !== 'None') {
@@ -386,6 +388,11 @@ function loadHeatMapManager() {
             }
 
             const activeColor = heatMapColorOverrides[key] || defColor;
+
+            /* Store the computed color so applyHeatMap uses it */
+            if (!heatMapColorOverrides[key]) {
+                heatMapColorOverrides[key] = activeColor;
+            }
 
             const group = document.createElement('div');
             group.className = 'thread-group'; /* Reuse styling */
@@ -1338,7 +1345,7 @@ function loadHoleManager() {
                 <div class="thread-group-header">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <!-- Eye Icon -->
-                        <div class="group-icon group-vis-toggle" title="Toggle Visibility" style="cursor:pointer; opacity:0.9; color:white;">
+                        <div class="group-icon group-vis-toggle" title="Toggle Visibility" style="cursor:pointer; opacity:0.9; color:#475569;">
                              ${isVisible ?
                     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>' :
                     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M1 1l22 22"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/></svg>'
@@ -1460,7 +1467,11 @@ const rpPanel = document.getElementById("right-panel");
 if (sidebarPin) {
     sidebarPin.addEventListener("click", () => {
         sidebar.classList.toggle("collapsed");
-        clog(`Sidebar ${sidebar.classList.contains("collapsed") ? "collapsed" : "expanded"}`);
+        const isCollapsed = sidebar.classList.contains("collapsed");
+        sidebarPin.innerHTML = isCollapsed
+            ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>'
+            : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" /></svg>';
+        clog(`Sidebar ${isCollapsed ? "collapsed" : "expanded"}`);
     });
 }
 
@@ -1481,7 +1492,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (path.length > 5 && /^[a-f0-9]+$/i.test(path)) {
         clog(`Loading model from URL: ${path}...`);
         loading.classList.remove("hidden");
-        fetch(`/api/model/${path}`)
+        fetch(`/api/model/${path}?t=${Date.now()}`)
             .then(r => r.json())
             .then(data => {
                 if (data.error) { clog("Load error: " + data.error, "err"); return; }
@@ -1498,7 +1509,7 @@ window.addEventListener("DOMContentLoaded", () => {
         /* Load Sample Model by default */
         clog("Loading sample model...", "info");
         loading.classList.remove("hidden");
-        fetch("/test_sample")
+        fetch("/test_sample?t=" + Date.now())
             .then(r => r.json())
             .then(data => {
                 if (data.error) { clog("Sample load error: " + data.error, "err"); return; }
@@ -1509,4 +1520,68 @@ window.addEventListener("DOMContentLoaded", () => {
             .catch(e => clog("Sample fetch error: " + e.message, "err"))
             .finally(() => loading.classList.add("hidden"));
     }
+});
+
+/* ══════════════════════════════════════════════════
+   ADMIN TOOLS
+   ══════════════════════════════════════════════════ */
+window.adminClearMetadata = async (scope = "all") => {
+    let msg = "ADMIN: Confirm action?";
+    if (scope === "db") msg = "Delete DB metadata for this model? (File untouched)";
+    if (scope === "file") msg = "Strip embedded metadata from STEP file? (DB untouched)";
+    if (scope === "all") msg = "NUKE EVERYTHING? Delete DB metadata AND strip STEP file?";
+
+    if (!confirm(msg)) return;
+
+    const uuid = modelUuid || "sample";
+    clog(`ADMIN: Clearing metadata (${scope}) for ${uuid}...`, "info");
+
+    try {
+        const r = await fetch("/api/admin/clear_metadata", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uuid: uuid, scope: scope })
+        });
+        const d = await r.json();
+
+        if (!r.ok) throw new Error(d.error || "Unknown error");
+
+        clog(`ADMIN: Success! ${d.message}`, "ok");
+        alert(`Success! ${d.message}\n\nModel is now clean in memory.\nYou can EXPORT it now.`);
+
+        // Reset UI instead of reload
+        if (modelUuid) {
+            // Clear selection
+            deselectAll();
+
+            // Visual and Data reset
+            faceMeshes.forEach(mesh => {
+                mesh.material.color.setHex(0x90a4ae); // DEFAULT_COLOR hex
+                if (mesh.userData) {
+                    mesh.userData.thread = null;
+                    mesh.userData.tolerance = null;
+                    if (mesh.userData.originalColor) {
+                        mesh.userData.originalColor.setHex(0x90a4ae);
+                    }
+                }
+            });
+
+            // Also clear heat map if active
+            if (typeof removeHeatMap === "function") removeHeatMap();
+
+            clog("Visual state reset to defaults.", "info");
+        }
+
+    } catch (e) {
+        clog("ADMIN FAILED: " + e.message, "err");
+        alert("Admin command failed: " + e.message);
+    }
+};
+
+/* Bind Admin Buttons */
+document.querySelectorAll(".admin-action").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const scope = btn.getAttribute("data-scope");
+        window.adminClearMetadata(scope);
+    });
 });

@@ -2,7 +2,7 @@
 import json
 from urllib.request import Request, urlopen
 
-BASE = "http://127.0.0.1:5000"
+BASE = "http://127.0.0.1:5555"
 
 # 1. Boot test to load a model
 req = Request(f"{BASE}/test_cube", data=b"", headers={"Content-Length": "0"}, method="POST")

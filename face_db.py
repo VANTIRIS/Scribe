@@ -266,6 +266,25 @@ def delete_face_meta(face_hash: str):
     conn.close()
 
 
+def delete_faces(face_hashes: list[str]):
+    """Delete metadata for a list of face hashes."""
+    if not face_hashes:
+        return
+    conn = _get_conn()
+    ph = ",".join("?" for _ in face_hashes)
+    conn.execute(f"DELETE FROM face_meta WHERE face_hash IN ({ph})", face_hashes)
+    conn.commit()
+    conn.close()
+
+
+def clear_database():
+    """Delete ALL entries from face_meta (Global Nuke)."""
+    conn = _get_conn()
+    conn.execute("DELETE FROM face_meta")
+    conn.commit()
+    conn.close()
+
+
 def get_db_stats() -> dict:
     conn = _get_conn()
     count = conn.execute("SELECT COUNT(*) FROM face_meta").fetchone()[0]

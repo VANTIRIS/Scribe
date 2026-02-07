@@ -4,7 +4,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 try:
-    req = Request("http://127.0.0.1:5000/test_cube", method="POST",
+    req = Request("http://127.0.0.1:5555/test_cube", method="POST",
                   data=b"", headers={"Content-Length": "0"})
     resp = urlopen(req)
     data = json.loads(resp.read().decode())

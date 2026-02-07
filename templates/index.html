@@ -5,6 +5,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SCRIBE - CAD Viewer</title>
+    <script type="text/javascript">
+        (function (c, l, a, r, i, t, y) {
+            c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments) };
+            t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+            y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+        })(window, document, "clarity", "script", "vdulu0u1jb");
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style_expansion.css') }}" />
     <style>
@@ -100,7 +107,7 @@
             gap: 8px;
             padding: 4px 0;
             font-size: 11px;
-            color: #d1d5db;
+            color: #475569;
         }
 
         /* Floating View Buttons in Viewport */
@@ -113,12 +120,12 @@
             flex-direction: row;
             gap: 4px;
             z-index: 100;
-            opacity: 0.4;
-            transition: opacity 0.2s ease;
+            opacity: 0.45;
+            transition: opacity 0.3s ease;
         }
 
         #view-buttons:hover {
-            opacity: 0.9;
+            opacity: 0.95;
         }
 
         #view-buttons .view-btn {
@@ -134,8 +141,13 @@
     <!-- Top Toolbar -->
     <header id="toolbar">
         <div class="tb-left">
-            <span class="scribe-brand">SCRIBE</span>
+            <a href="/" style="text-decoration:none;"><span class="scribe-brand">SCRIBE</span></a>
             <span class="scribe-subtitle">like PDFs for CAD</span>
+            <span style="font-size:0.6rem; color:rgba(255,255,255,0.35); margin-left:12px;">by <a
+                    href="https://www.andrewmccalip.com" target="_blank"
+                    style="color:rgba(255,255,255,0.5); text-decoration:none; border-bottom:1px solid transparent; transition:border-color 0.2s;"
+                    onmouseover="this.style.borderColor='rgba(255,255,255,0.3)'"
+                    onmouseout="this.style.borderColor='transparent'">Andrew McCalip</a></span>
         </div>
         <div class="tb-center">
             <!-- Toggle icon buttons like Fusion 360 -->
@@ -178,10 +190,9 @@
     <!-- Left Sidebar -->
     <aside id="sidebar">
         <div class="panel-header">
-            <span class="panel-title">Tools</span>
             <button id="sidebar-pin" class="panel-pin" title="Collapse panel">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <path d="M15 18l-6-6 6-6" />
                 </svg>
             </button>
         </div>
@@ -208,14 +219,24 @@
 
         <div id="export-section" class="section hidden">
             <h2>Export</h2>
-            <button id="export-btn">Export STEP</button>
+            <button id="export-btn">Export</button>
         </div>
 
 
 
         <!-- Console log fills bottom of sidebar -->
         <div id="console-section">
-            <h2>Console</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h2 style="margin:0;">Console</h2>
+                <div style="display:flex; gap:4px;">
+                    <button class="view-btn admin-action" data-scope="db" title="Clear Database Metadata"
+                        style="padding:2px 6px; font-size:9px; background:#ef4444; border-color:#b91c1c;">DB</button>
+                    <button class="view-btn admin-action" data-scope="file" title="Strip File Metadata"
+                        style="padding:2px 6px; font-size:9px; background:#f59e0b; border-color:#d97706;">File</button>
+                    <button class="view-btn admin-action" data-scope="all" title="Nuke Both"
+                        style="padding:2px 6px; font-size:9px; background:#000; border-color:#333;">All</button>
+                </div>
+            </div>
             <div id="console-log"></div>
         </div>
     </aside>
@@ -299,7 +320,7 @@
                         </path>
                         <line x1="12" y1="22" x2="12" y2="22"></line>
                     </svg>
-                    <span>Tol.</span>
+                    <span>Tols</span>
                 </button>
             </div>
 
@@ -377,21 +398,7 @@
                             <input type="text" id="inp-datum" class="rp-input" placeholder="e.g. A|B|C" />
                         </div>
 
-                        <div class="rp-section">
-                            <h3>Surface Finish</h3>
-                            <div class="rp-row"><span class="rp-label">Roughness (Ra)</span><span
-                                    class="rp-value rp-placeholder" id="rp-roughness">--</span></div>
-                            <div class="rp-row"><span class="rp-label">Finish Process</span><span
-                                    class="rp-value rp-placeholder" id="rp-finish">--</span></div>
-                        </div>
 
-                        <div class="rp-section">
-                            <h3>Material</h3>
-                            <div class="rp-row"><span class="rp-label">Material</span><span
-                                    class="rp-value rp-placeholder" id="rp-material">--</span></div>
-                            <div class="rp-row"><span class="rp-label">Hardness</span><span
-                                    class="rp-value rp-placeholder" id="rp-hardness">--</span></div>
-                        </div>
                     </div> <!-- End rp-default-view -->
 
                     <hr class="rp-divider">
@@ -424,23 +431,11 @@
                         <div id="heatmap-groups" class="rp-section"
                             style="border-top:1px solid #374151; padding-top:10px;"></div>
 
-                        <!-- Legend -->
-                        <div class="hm-legend">
-                            <h4>Legend</h4>
-                            <div class="hm-item"><span class="hm-dot" id="hm-dot-tight"
-                                    style="background:#ef4444"></span>
-                                Tight (≤ min)</div>
-                            <div class="hm-item"><span class="hm-dot" id="hm-dot-loose"
-                                    style="background:#94a3b8"></span>
-                                Loose (≥ max)</div>
-                            <div class="hm-item"><span class="hm-dot" style="background:#374151"></span> No tolerance
-                            </div>
-                        </div>
+
                     </div>
 
                     <!-- Expanded Content: Hole Manager -->
                     <div id="hole-manager-section" class="hidden">
-                        <h3>HOLE WIZARD</h3>
 
                         <!-- Thread Groups -->
                         <div class="rp-section">
@@ -454,16 +449,6 @@
                             </div>
                         </div>
 
-                        <!-- Hole List by Diameter -->
-                        <div class="rp-section">
-                            <h4 style="margin:0 0 6px 0; font-size:11px; color:#9ca3af;">Holes by Diameter</h4>
-                            <div id="hole-list">
-                                <div class="hole-list-placeholder"
-                                    style="color:#6b7280; font-size:11px; font-style:italic;">
-                                    Load a model to see holes...
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                 </div> <!-- End rp-content -->

@@ -7,13 +7,13 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyo
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+.gemini/
 
 # Git
 .git/
@@ -26,15 +26,12 @@ __pycache__/
 uploads/*
 !uploads/.gitkeep
 
-# Dev files
-prompts.md
-
-# Exclude STEP files in uploads but keep sample
-uploads/*
-!uploads/.gitkeep
-!tests/sample.STEP
+# Dev / test artifacts
+tests/__pycache__/
+.pytest_cache/
+temp/
+server_logs.txt
 
 # OS
 .DS_Store
 Thumbs.db
-.pytest_cache/

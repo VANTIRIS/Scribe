@@ -9,7 +9,7 @@
 
 :root {
     --sidebar-w: 240px;
-    --rpanel-w: 300px;
+    --rpanel-w: 350px;
     --toolbar-h: 36px;
     --bg-sidebar: #f4f5f7;
     --bg-sidebar-alt: #eaecf0;
@@ -45,13 +45,14 @@ body {
     left: 0;
     right: 0;
     height: var(--toolbar-h);
-    background: var(--bg-toolbar);
+    background: linear-gradient(180deg, #353535 0%, var(--bg-toolbar) 100%);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 12px;
+    padding: 0 16px;
     z-index: 100;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .35);
+    border-bottom: 1px solid rgba(96, 165, 250, 0.15);
 }
 
 .tb-left,
@@ -82,9 +83,9 @@ body {
 
 .tb-sep {
     width: 1px;
-    height: 18px;
-    background: #4a4a4a;
-    margin: 0 6px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.12);
+    margin: 0 8px;
 }
 
 /* Toolbar icon buttons */
@@ -132,33 +133,16 @@ body {
     height: calc(100% - var(--toolbar-h));
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border);
-    padding: 14px 12px 0;
+    padding: 10px 12px 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     overflow: hidden;
     z-index: 10;
     transition: width 0.25s ease, padding 0.25s ease;
 }
 
-#console-section {
-    margin-top: auto;
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
-    display: flex;
-    flex-direction: column;
-    /* ensure it doesn't overflow sidebar height if content is long */
-    max-height: 40%;
-    min-height: 100px;
-}
-
-#console-log {
-    overflow-y: auto;
-    flex: 1;
-    font-size: 0.75rem;
-    font-family: monospace;
-    color: var(--text-dim);
-}
+/* console-section & console-log: primary styles defined at L695+ */
 
 #sidebar.collapsed {
     width: 36px;
@@ -174,14 +158,12 @@ body {
     justify-content: center;
 }
 
-/* Panel header with pin button */
 .panel-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 4px 8px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 4px;
+    justify-content: flex-end;
+    padding: 0 4px 6px;
+    margin-bottom: 2px;
 }
 
 .panel-title {
@@ -239,75 +221,52 @@ body {
 
 #rp-tabs {
     width: 64px;
-    /* Wider for labels */
     background: #f8fafc;
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 12px;
-    gap: 12px;
+    padding-top: 10px;
+    gap: 6px;
     pointer-events: auto;
-    box-shadow: -1px 0 4px rgba(0, 0, 0, 0.05);
+    box-shadow: -1px 0 4px rgba(0, 0, 0, 0.04);
 }
 
 .rp-tab {
-    width: 56px;
-    height: 50px;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--text-dim);
     display: flex;
     flex-direction: column;
-    /* Icon above text */
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    width: 62px;
+    height: 54px;
+    background: transparent;
+    border: none;
+    border-right: 3px solid transparent;
     cursor: pointer;
+    color: var(--text-dim);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 6px 4px;
+    gap: 3px;
+    border-radius: 0;
 }
 
 .rp-tab span {
     font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
+    line-height: 1;
 }
 
 .rp-tab:hover {
     color: var(--text);
     background: #e2e8f0;
-    transform: translateX(-2px);
-}
-
-.rp-tab {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 65px;
-    /* Increased from default/implicit */
-    height: 60px;
-    background: transparent;
-    border: none;
-    border-right: 3px solid transparent;
-    cursor: pointer;
-    color: var(--text-dim);
-    transition: all 0.2s;
-    padding: 8px 4px;
-    gap: 4px;
-}
-
-.rp-tab span {
-    font-size: 10px;
-    line-height: 1;
 }
 
 .rp-tab.active {
     background: #dbeafe;
     color: var(--accent);
-    border-color: var(--accent);
+    border-right-color: var(--accent);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -322,11 +281,12 @@ body {
     border-left: 1px solid var(--border);
     padding: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     pointer-events: auto;
     display: flex;
     flex-direction: column;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
-    box-shadow: -4px 0 20px rgba(0, 0, 0, .06);
+    box-shadow: -2px 0 12px rgba(0, 0, 0, .04);
 }
 
 #right-panel.hidden {
@@ -400,6 +360,7 @@ body {
     padding: 2px 6px;
     border-radius: 4px;
     line-height: 1;
+    transition: all 0.15s;
 }
 
 .icon-btn:hover {
@@ -583,13 +544,13 @@ button:hover:not(:disabled) {
 
 /* ── Drop Zone ────────────────────────────────────── */
 .drop-zone {
-    border: 2px dashed var(--border);
+    border: 2px dashed #c7d2de;
     border-radius: var(--radius);
-    padding: 20px 10px;
+    padding: 18px 10px;
     text-align: center;
     cursor: pointer;
-    transition: all .2s ease;
-    background: #ffffff;
+    transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fafbfc;
 }
 
 .drop-zone:hover,
@@ -651,6 +612,7 @@ button:hover:not(:disabled) {
 
 #export-btn:hover:not(:disabled) {
     background: #059669;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 #export-btn::before {
@@ -663,12 +625,13 @@ button:hover:not(:disabled) {
 
 /* ── UUID in Toolbar ──────────────────────────────── */
 .tb-uuid {
-    font-size: .65rem;
+    font-size: .6rem;
     font-family: 'Cascadia Code', 'Consolas', monospace;
-    color: #64748b;
-    background: rgba(255, 255, 255, .1);
+    color: #94a3b8;
+    background: rgba(255, 255, 255, .06);
     padding: 2px 8px;
     border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, .08);
     user-select: all;
 }
 
@@ -695,11 +658,12 @@ label {
 #console-section {
     margin-top: auto;
     border-top: 1px solid var(--border);
-    padding-top: 8px;
+    padding: 8px 0 0;
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    flex: 1 1 120px;
+    min-height: 80px;
+    max-height: 35%;
+    flex-shrink: 0;
 }
 
 #console-log {
@@ -711,10 +675,10 @@ label {
     border-radius: var(--radius);
     padding: 6px 8px;
     font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
-    font-size: .65rem;
+    font-size: .55rem;
     line-height: 1.6;
     color: #a0a8c0;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 #console-log .log-line {

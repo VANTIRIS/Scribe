@@ -5,7 +5,7 @@ The hashes will differ (different kernel) but fuzzy match should restore metadat
 import json, os, sys
 from urllib.request import Request, urlopen
 
-BASE = "http://127.0.0.1:5000"
+BASE = "http://127.0.0.1:5555"
 TEMP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "temp")
 SW_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "cube_solidworks.step")
 

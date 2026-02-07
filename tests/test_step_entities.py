@@ -10,7 +10,7 @@ import re
 import sys
 from urllib.request import Request, urlopen
 
-BASE = "http://127.0.0.1:5000"
+BASE = "http://127.0.0.1:5555"
 TEMP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "temp")
 
 def post_json(url, payload):
@@ -50,7 +50,7 @@ print("\n--- STEP Entity Checks ---")
 
 has_prop_def = "PROPERTY_DEFINITION('StepViewerFaceMetadata'" in content
 has_prop_rep = "PROPERTY_DEFINITION_REPRESENTATION" in content
-has_dri = "DESCRIPTIVE_REPRESENTATION_ITEM('SVFM'" in content
+has_dri = "DESCRIPTIVE_REPRESENTATION_ITEM('SVFM'" in content or "DESCRIPTIVE_REPRESENTATION_ITEM('StepViewerFaceMetadata'" in content
 has_comment = "__STEPVIEWER_META_START__" in content
 has_styled = "STYLED_ITEM" in content
 
@@ -63,7 +63,7 @@ print(f"  STYLED_ITEM (color):                               {has_styled}")
 # ── Extract and decode the base64 payload from the STEP entity ───
 print("\n--- Entity Payload Extraction ---")
 dri_match = re.search(
-    r"DESCRIPTIVE_REPRESENTATION_ITEM\s*\(\s*'SVFM'\s*,\s*\n?\s*'([^']*)'\s*\)",
+    r"DESCRIPTIVE_REPRESENTATION_ITEM\s*\(\s*'(?:SVFM|StepViewerFaceMetadata)'\s*,\s*\n?\s*'([^']*)'\s*\)",
     content, re.DOTALL,
 )
 if dri_match:
@@ -108,7 +108,7 @@ with open(stripped_path, "w") as f:
 
 # Use the same extraction logic from app.py
 dri_match2 = re.search(
-    r"DESCRIPTIVE_REPRESENTATION_ITEM\s*\(\s*'SVFM'\s*,\s*'([^']*)'\s*\)",
+    r"DESCRIPTIVE_REPRESENTATION_ITEM\s*\(\s*'(?:SVFM|StepViewerFaceMetadata)'\s*,\s*'([^']*)'\s*\)",
     stripped, re.DOTALL,
 )
 if dri_match2:
