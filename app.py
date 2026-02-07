@@ -55,13 +55,14 @@ app.logger.info("Flask server starting up")
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 FIRST_BOOT = True
+APP_VERSION = 1
 
 @app.route("/")
 def index():
     global FIRST_BOOT
     do_test = FIRST_BOOT
     FIRST_BOOT = False
-    return render_template("index.html", boot_test=do_test)
+    return render_template("index.html", boot_test=do_test, version=APP_VERSION)
 
 
 @app.route("/upload", methods=["POST"])
@@ -99,7 +100,7 @@ def upload():
 @app.route("/<uuid_str>")
 def view_model(uuid_str):
     """Serve the viewer for a specific model UUID."""
-    return render_template("index.html", boot_test=False)
+    return render_template("index.html", boot_test=False, version=APP_VERSION)
 
 @app.route("/api/model/<uuid_str>")
 def get_model(uuid_str):
